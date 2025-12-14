@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState } from 'react';
 import { Subscription } from '../../lib/types';
-import { createSubscription, getSubscriptionStatus } from '../../lib/subscription';
+import { createSubscription } from '../../lib/subscription';
 
 interface User {
   id: string;
@@ -37,6 +37,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Calculate trial start date (3 days ago)
+  const trialStartDate = new Date();
+  trialStartDate.setDate(trialStartDate.getDate() - 3);
+
   const mockUsers: Record<string, { password: string; user: User }> = {
     'admin@example.com': {
       password: 'adminpass',
@@ -66,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         name: 'Regular User',
         email: 'user@example.com',
         role: 'user',
-        subscription: createSubscription('2', 'premium', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)), // Started 3 days ago
+        subscription: createSubscription('2', 'premium', trialStartDate),
       },
     },
   };

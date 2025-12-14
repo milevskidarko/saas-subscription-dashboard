@@ -17,10 +17,10 @@ const Sidebar: React.FC = () => {
             </li>
             <li>
               <Link
-                href="/subscriptions"
+                href="/subscription"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
               >
-                Subscriptions
+                Subscription
               </Link>
             </li>
             <li>

@@ -100,7 +100,7 @@ export function createSubscription(
   return {
     id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     userId,
-    plan: planId as any,
+    plan: planId as 'basic' | 'premium' | 'enterprise',
     status: 'trial',
     startDate,
     trialEndDate,
