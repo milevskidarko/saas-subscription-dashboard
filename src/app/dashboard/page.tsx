@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import { getSubscriptionStatus, getDaysUntilTrialEnds, getPlanById, formatCurrency } from '../../lib/subscription';
 
 interface StatCardProps {
   title: string;
@@ -135,6 +136,37 @@ export default function Dashboard() {
                 Welcome back, {user.name}! Here's what's happening with your subscriptions.
               </p>
             </div>
+
+            {user.subscription && (
+              <div className="mb-8">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Subscription Status</h2>
+                      <p className="text-gray-600 mt-1">
+                        Plan: {getPlanById(user.subscription.plan)?.name} - {formatCurrency(user.subscription.price, user.subscription.currency)}/month
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                        getSubscriptionStatus(user.subscription) === 'trial'
+                          ? 'bg-blue-100 text-blue-800'
+                          : getSubscriptionStatus(user.subscription) === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {getSubscriptionStatus(user.subscription).toUpperCase()}
+                      </span>
+                      {getSubscriptionStatus(user.subscription) === 'trial' && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {getDaysUntilTrialEnds(user.subscription)} days left in trial
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {isLoading

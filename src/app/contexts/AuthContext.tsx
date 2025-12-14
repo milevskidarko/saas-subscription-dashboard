@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useState } from 'react';
+import { Subscription } from '../../lib/types';
+import { createSubscription, getSubscriptionStatus } from '../../lib/subscription';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: 'admin' | 'user';
+  subscription?: Subscription;
 }
 
 interface AuthContextType {
@@ -37,11 +40,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const mockUsers: Record<string, { password: string; user: User }> = {
     'admin@example.com': {
       password: 'adminpass',
-      user: { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'admin' },
+      user: {
+        id: '1',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'admin',
+        subscription: {
+          id: 'sub_admin_001',
+          userId: '1',
+          plan: 'enterprise',
+          status: 'active',
+          startDate: new Date('2024-01-01'),
+          trialEndDate: new Date('2024-01-08'),
+          endDate: new Date('2025-01-01'),
+          autoRenew: true,
+          price: 99.99,
+          currency: 'USD',
+        },
+      },
     },
     'user@example.com': {
       password: 'userpass',
-      user: { id: '2', name: 'Regular User', email: 'user@example.com', role: 'user' },
+      user: {
+        id: '2',
+        name: 'Regular User',
+        email: 'user@example.com',
+        role: 'user',
+        subscription: createSubscription('2', 'premium', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)), // Started 3 days ago
+      },
     },
   };
 
