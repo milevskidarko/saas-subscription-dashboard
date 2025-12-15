@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import { getSubscriptionStatus, getDaysUntilTrialEnds, getPlanById, formatCurrency } from '../../lib/subscription';
+import { getSubscriptionStatus, getDaysUntilTrialEnds, getPlanById, formatCurrency, hasFeatureAccess } from '../../lib/subscription';
+import { useQuery } from '@tanstack/react-query';
+import { fetchDashboardStats, fetchRecentActivities } from '../../lib/api';
+import { LockedFeature } from '../components/LockedFeature';
 
 interface StatCardProps {
   title: string;
@@ -58,7 +61,6 @@ function StatCardSkeleton() {
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -66,57 +68,70 @@ export default function Dashboard() {
     }
   }, [user, router]);
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: fetchDashboardStats,
+    enabled: !!user,
+  });
+
+  const { data: activities, isLoading: activitiesLoading, error: activitiesError } = useQuery({
+    queryKey: ['recent-activities'],
+    queryFn: fetchRecentActivities,
+    enabled: !!user,
+  });
 
   if (!user) {
     return <div>Redirecting...</div>;
   }
 
-  const stats = [
+  const displayStats = stats || {
+    totalSubscriptions: 0,
+    activeUsers: 0,
+    monthlyRevenue: 0,
+    churnRate: 0,
+    newSignups: 0,
+    avgSessionTime: '0m 0s',
+  };
+
+  const statsData = [
     {
       title: 'Total Subscriptions',
-      value: '1,234',
+      value: displayStats.totalSubscriptions.toLocaleString(),
       change: '+12.5% from last month',
       changeType: 'positive' as const,
       icon: '📊',
     },
     {
       title: 'Active Users',
-      value: '567',
+      value: displayStats.activeUsers.toLocaleString(),
       change: '+8.2% from last month',
       changeType: 'positive' as const,
       icon: '👥',
     },
     {
       title: 'Monthly Revenue',
-      value: '$12,345',
+      value: `$${displayStats.monthlyRevenue.toLocaleString()}`,
       change: '+15.3% from last month',
       changeType: 'positive' as const,
       icon: '💰',
     },
     {
       title: 'Churn Rate',
-      value: '2.4%',
+      value: `${displayStats.churnRate}%`,
       change: '-0.5% from last month',
       changeType: 'positive' as const,
       icon: '📉',
     },
     {
       title: 'New Signups',
-      value: '89',
+      value: displayStats.newSignups.toString(),
       change: '+22.1% from last month',
       changeType: 'positive' as const,
       icon: '📈',
     },
     {
       title: 'Avg. Session Time',
-      value: '24m 32s',
+      value: displayStats.avgSessionTime,
       change: '+5.7% from last month',
       changeType: 'positive' as const,
       icon: '⏱️',
@@ -133,7 +148,7 @@ export default function Dashboard() {
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600 mt-2">
-                Welcome back, {user.name}! Here's what's happening with your subscriptions.
+                Welcome back, {user.name}! Here&apos;s what&apos;s happening with your subscriptions.
               </p>
             </div>
 
@@ -169,11 +184,13 @@ export default function Dashboard() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {isLoading
+              {statsLoading
                 ? Array.from({ length: 6 }).map((_, index) => (
                     <StatCardSkeleton key={index} />
                   ))
-                : stats.map((stat, index) => (
+                : statsError
+                ? <div className="col-span-full text-center text-red-600">Error loading stats</div>
+                : statsData.map((stat, index) => (
                     <StatCard key={index} {...stat} />
                   ))}
             </div>
@@ -182,43 +199,46 @@ export default function Dashboard() {
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
                 <div className="space-y-3">
-                  {isLoading ? (
+                  {activitiesLoading ? (
                     <>
                       <div className="animate-pulse h-4 bg-gray-200 rounded"></div>
                       <div className="animate-pulse h-4 bg-gray-200 rounded w-3/4"></div>
                       <div className="animate-pulse h-4 bg-gray-200 rounded w-1/2"></div>
                     </>
-                  ) : (
-                    <>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm text-gray-600">New subscription from john@example.com</span>
+                  ) : activitiesError ? (
+                    <div className="text-red-600">Error loading activities</div>
+                  ) : activities ? (
+                    activities.map((activity) => (
+                      <div key={activity.id} className="flex items-center space-x-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          activity.type === 'subscription' ? 'bg-green-500' :
+                          activity.type === 'payment' ? 'bg-blue-500' : 'bg-orange-500'
+                        }`}></div>
+                        <span className="text-sm text-gray-600">{activity.message}</span>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm text-gray-600">Payment received: $29.99</span>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-sm text-gray-600">User upgraded to premium plan</span>
-                      </div>
-                    </>
-                  )}
+                    ))
+                  ) : null}
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <button className="p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-700 font-medium transition-colors">
-                    Add User
-                  </button>
-                  <button className="p-3 bg-green-50 hover:bg-green-100 rounded-lg text-green-700 font-medium transition-colors">
-                    Create Plan
-                  </button>
-                  <button className="p-3 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 font-medium transition-colors">
-                    View Reports
-                  </button>
+                  <LockedFeature isLocked={!hasFeatureAccess(user.subscription, 'manage_users')}>
+                    <button className="p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-700 font-medium transition-colors">
+                      Add User
+                    </button>
+                  </LockedFeature>
+                  <LockedFeature isLocked={!hasFeatureAccess(user.subscription, 'create_plan')}>
+                    <button className="p-3 bg-green-50 hover:bg-green-100 rounded-lg text-green-700 font-medium transition-colors">
+                      Create Plan
+                    </button>
+                  </LockedFeature>
+                  <LockedFeature isLocked={!hasFeatureAccess(user.subscription, 'view_reports')}>
+                    <button className="p-3 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 font-medium transition-colors">
+                      View Reports
+                    </button>
+                  </LockedFeature>
                   <button className="p-3 bg-orange-50 hover:bg-orange-100 rounded-lg text-orange-700 font-medium transition-colors">
                     Settings
                   </button>

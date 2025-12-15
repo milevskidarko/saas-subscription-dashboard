@@ -13,7 +13,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      // Redirect based on role
       if (user.role === 'admin') {
         router.push('/admin');
       } else {

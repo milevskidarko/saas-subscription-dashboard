@@ -128,3 +128,26 @@ export function cancelSubscription(subscription: Subscription): Subscription {
     autoRenew: false,
   };
 }
+
+
+export const FEATURE_REQUIREMENTS = {
+  'create_plan': 'enterprise',
+  'view_reports': 'premium',
+  'manage_users': 'premium',
+  'api_access': 'premium',
+  'custom_integrations': 'enterprise',
+  'dedicated_support': 'enterprise',
+} as const;
+
+export type FeatureKey = keyof typeof FEATURE_REQUIREMENTS;
+
+export function hasFeatureAccess(subscription: Subscription | undefined, feature: FeatureKey): boolean {
+  if (!subscription) return false;
+
+  const requiredPlan = FEATURE_REQUIREMENTS[feature];
+  const planHierarchy = ['basic', 'premium', 'enterprise'];
+  const userPlanIndex = planHierarchy.indexOf(subscription.plan);
+  const requiredPlanIndex = planHierarchy.indexOf(requiredPlan);
+
+  return userPlanIndex >= requiredPlanIndex && isSubscriptionActive(subscription);
+}

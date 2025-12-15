@@ -37,7 +37,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Calculate trial start date (3 days ago)
   const trialStartDate = new Date();
   trialStartDate.setDate(trialStartDate.getDate() - 3);
 
@@ -77,7 +76,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     const mockUser = mockUsers[email];
     if (mockUser && mockUser.password === password) {
